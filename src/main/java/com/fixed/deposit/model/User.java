@@ -11,17 +11,14 @@ public class User {
     private Long user_Id;
 
     private String name;
-    private int age;
-    private int ph_no;
+    private String dob;
+    private String phone;
     private String email;
     private String role;
-
-    @Column(unique = true)
-    private String panNo;
-
     private String mpin;
 
-    @OneToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(unique = true, nullable = true)
+    private String panNo;
+
+
 }
