@@ -1,23 +1,37 @@
 package com.fixed.deposit.controller;
 
+import com.fixed.deposit.model.Employee;
 import com.fixed.deposit.model.User;
+import com.fixed.deposit.repository.EmployeeRepository;
 import com.fixed.deposit.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:4200")
 public class AuthController {
 
+
     @Autowired
     private JavaMailSender mailSender;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
 
     // Step 1: Send OTP
     @PostMapping("/send-otp")
@@ -49,5 +63,46 @@ public class AuthController {
     private String generateOtp() {
         int otp = (int)(Math.random() * 900000) + 100000;
         return String.valueOf(otp);
+    }
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> loginData) {
+        String email = loginData.get("email");
+        String mpin = loginData.get("mpin");
+
+        System.out.println("Login attempt: " + email + " - " + mpin); //
+
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(404).body("Email not found");
+        }
+
+        User user = optionalUser.get();
+        if (!user.getMpin().equals(mpin)) {
+            return ResponseEntity.status(401).body("Invalid MPIN");
+        }
+
+        return ResponseEntity.ok(user);
+
+    }
+    @PostMapping("/employees/login")
+    public ResponseEntity<?> employeeLogin(@RequestBody Map<String, String> loginData) {
+        String email = loginData.get("email");
+        String password = loginData.get("password");
+
+        Employee emp = employeeRepository.findByEmail(email);
+        if (emp == null || !passwordEncoder.matches(password, emp.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
+
+        // Don't return full entity directly
+        Map<String, Object> response = Map.of(
+                "id", emp.getEmp_Id(),
+                "name", emp.getName(),
+                "email", emp.getEmail(),
+                "role", emp.getRole()
+        );
+
+        return ResponseEntity.ok(response);
     }
 }
