@@ -33,29 +33,26 @@ public class AuthController {
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
-    // Step 1: Send OTP
     @PostMapping("/send-otp")
     public ResponseEntity<String> sendOtp(@RequestParam String email) {
         String otp = generateOtp();
 
-        // Send email
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
         message.setSubject("Your OTP for Registration");
         message.setText("Your OTP is: " + otp);
         mailSender.send(message);
 
-        return ResponseEntity.ok(otp); // NOTE: In production, don't return OTP
+        return ResponseEntity.ok(otp);
     }
 
-    // Step 2: Register user (after OTP verified)
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody User user) {
         if (userRepository.existsByEmail(user.getEmail())) {
             return ResponseEntity.badRequest().body("Email already exists");
         }
 
-        user.setRole("Customer"); // Set default role
+        user.setRole("Customer");
         userRepository.save(user);
         return ResponseEntity.ok("Account created successfully");
     }
@@ -95,7 +92,6 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 
-        // Don't return full entity directly
         Map<String, Object> response = Map.of(
                 "id", emp.getEmp_Id(),
                 "name", emp.getName(),

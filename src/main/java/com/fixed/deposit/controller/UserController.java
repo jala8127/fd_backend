@@ -21,7 +21,6 @@ public class UserController {
         return ResponseEntity.ok(userRepository.findAll());
     }
 
-    // Get user by email
     @GetMapping("/{email}")
     public ResponseEntity<?> getUserByEmail(@PathVariable String email) {
         Optional<User> user = userRepository.findByEmail(email);
@@ -29,7 +28,6 @@ public class UserController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Update address or phone
     @PutMapping("/update")
     public ResponseEntity<String> updateUser(@RequestBody User updatedUser) {
         Optional<User> existingUser = userRepository.findByEmail(updatedUser.getEmail());
