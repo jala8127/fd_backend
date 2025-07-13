@@ -24,7 +24,7 @@ public class Kyc {
 
     private String aadhaarNumber;
     private String panNumber;
-    private String aadhaarDocument; // filename or path
+    private String aadhaarDocument;
 
     private String status;
     private String rejectionReason;

@@ -96,6 +96,7 @@ public class AuthController {
                 "id", emp.getEmp_Id(),
                 "name", emp.getName(),
                 "email", emp.getEmail(),
+                "phone", emp.getPhone(),
                 "role", emp.getRole()
         );
 

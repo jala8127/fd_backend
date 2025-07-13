@@ -26,5 +26,6 @@ public class Deposits {
     private LocalDate maturityDate;
     private Double maturityAmount;
     private String payoutType;
+    private double interestEarned;
     private String status;
 }

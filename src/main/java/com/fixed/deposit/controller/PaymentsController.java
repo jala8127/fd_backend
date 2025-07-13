@@ -29,44 +29,61 @@ public class PaymentsController {
     private SchemesRepository schemeRepo;
 
     @PostMapping("/create")
-    public ResponseEntity<String> createPayment(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, String>> createPayment(@RequestBody Map<String, Object> body) {
         System.out.println("Received Payment: " + body);
-        String email = (String) body.get("email");
-        Long schemeId = ((Number) body.get("schemeId")).longValue();
-        Double amount = ((Number) body.get("amount")).doubleValue();
-        String mode = (String) body.get("paymentMode");
-        String status = (String) body.get("status");
 
-        // Save payment record
-        Payments payment = new Payments();
-        payment.setUserEmail(email);
-        payment.setSchemeId(schemeId);
-        payment.setAmount(amount);
-        payment.setPaymentMode(mode);
-        payment.setStatus(status);
-        payment.setTransactionId(UUID.randomUUID().toString());
-        paymentRepo.save(payment);
+        try {
+            String email = (String) body.get("email");
+            Long schemeId = ((Number) body.get("schemeId")).longValue();
+            Double amount = ((Number) body.get("amount")).doubleValue();
+            String mode = (String) body.get("paymentMode");
+            String status = (String) body.get("status");
 
-        if ("SUCCESS".equalsIgnoreCase(status)) {
-            Schemes scheme = schemeRepo.findById(schemeId).orElseThrow(() -> new RuntimeException("Scheme not found"));
-            double maturity = amount * Math.pow(1 + scheme.getInterestRate() / 100.0, scheme.getTenureMonths() / 12.0);
+            // Save payment record
+            Payments payment = new Payments();
+            payment.setUserEmail(email);
+            payment.setSchemeId(schemeId);
+            payment.setAmount(amount);
+            payment.setPaymentMode(mode);
+            payment.setStatus(status);
+            payment.setTransactionId(UUID.randomUUID().toString());
+            paymentRepo.save(payment);
 
-            Deposits deposit = new Deposits();
-            deposit.setUserEmail(email);
-            deposit.setScheme(scheme);
-            deposit.setAmount(amount);
-            deposit.setInterestRate(scheme.getInterestRate());
-            deposit.setTenureMonths(scheme.getTenureMonths());
-            deposit.setStartDate(LocalDate.now());
-            deposit.setMaturityDate(LocalDate.now().plusMonths(scheme.getTenureMonths()));
-            deposit.setMaturityAmount(maturity);
-            deposit.setPayoutType(scheme.getSchemeType());
-            deposit.setStatus("ACTIVE");
+            // Create deposit if payment is successful
+            if ("SUCCESS".equalsIgnoreCase(status)) {
+                Schemes scheme = schemeRepo.findById(schemeId)
+                        .orElseThrow(() -> new RuntimeException("Scheme not found"));
 
-            depositRepo.save(deposit);
+                double maturity = amount * Math.pow(1 + scheme.getInterestRate() / 100.0,
+                        scheme.getTenureMonths() / 12.0);
+
+                Deposits deposit = new Deposits();
+                deposit.setUserEmail(email);
+                deposit.setScheme(scheme);
+                deposit.setAmount(amount);
+                deposit.setInterestRate(scheme.getInterestRate());
+                deposit.setTenureMonths(scheme.getTenureMonths());
+                deposit.setStartDate(LocalDate.now());
+                deposit.setMaturityDate(LocalDate.now().plusMonths(scheme.getTenureMonths()));
+                deposit.setMaturityAmount(maturity);
+                deposit.setPayoutType(scheme.getSchemeType());
+                deposit.setStatus("ACTIVE");
+
+                depositRepo.save(deposit);
+            }
+
+            Map<String, String> response = Map.of(
+                    "message", "Payment processed",
+                    "status", status
+            );
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(
+                    Map.of("message", "Error processing payment", "status", "FAILURE")
+            );
         }
-
-        return ResponseEntity.ok("Payment processed. Status: " + status);
     }
 
     @GetMapping("/all")
