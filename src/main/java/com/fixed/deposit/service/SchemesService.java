@@ -52,4 +52,13 @@ public class SchemesService {
         }
         return null;
     }
+    public void updateSeniorRates(List<Schemes> updatedSchemes) {
+        for (Schemes incoming : updatedSchemes) {
+            Schemes existing = schemesRepo.findById(incoming.getId()).orElse(null);
+            if (existing != null) {
+                existing.setSeniorBonusRate(incoming.getSeniorBonusRate());
+                schemesRepo.save(existing);
+            }
+        }
+    }
 }

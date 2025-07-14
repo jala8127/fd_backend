@@ -15,6 +15,8 @@ public interface KycRepository extends JpaRepository<Kyc, Long> {
 
     Optional<Kyc> findByUser(User user);
 
+    Optional<Kyc> findByUser_Email(String email);
+
     Optional<Kyc> findByUser_UserId(Long userId);
 
 }

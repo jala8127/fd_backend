@@ -35,6 +35,10 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<String> sendOtp(@RequestParam String email) {
+        if (userRepository.existsByEmail(email)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already registered");
+        }
+
         String otp = generateOtp();
 
         SimpleMailMessage message = new SimpleMailMessage();
@@ -101,5 +105,10 @@ public class AuthController {
         );
 
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/check-email/{email}")
+    public ResponseEntity<Boolean> checkEmailExists(@PathVariable String email) {
+        boolean exists = userRepository.existsByEmail(email);
+        return ResponseEntity.ok(exists);
     }
 }

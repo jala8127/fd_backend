@@ -20,4 +20,6 @@ public class Schemes {
 
     private boolean isActive;
     private String payout;
+
+    private Double seniorBonusRate;
 }

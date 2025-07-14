@@ -15,8 +15,10 @@ public class Payments {
 
     private String userEmail;
     private Long schemeId;
+    private String schemeName;
     private Double amount;
     private String paymentMode;
+    private String paymentDetails;
     private String transactionId;
     private String status;
 

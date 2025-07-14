@@ -43,4 +43,11 @@ public class SchemesController {
         Schemes updated = schemesService.toggleStatus(id);
         if (updated == null) return ResponseEntity.badRequest().body("Scheme not found");
         return ResponseEntity.ok(updated);
-    }}
+    }
+
+    @PutMapping("/update-senior-rates")
+    public ResponseEntity<Void> updateSeniorRates(@RequestBody List<Schemes> schemes) {
+        schemesService.updateSeniorRates(schemes);
+        return ResponseEntity.ok().build();
+    }
+}

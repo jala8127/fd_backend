@@ -19,6 +19,7 @@ public class Deposits {
     @JoinColumn(name = "scheme_id")
     private Schemes scheme;
 
+
     private Double amount;
     private Double interestRate;
     private Integer tenureMonths;

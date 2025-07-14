@@ -36,8 +36,8 @@ public class DepositsController {
     }
 
     @GetMapping("/all")
-    public List<Deposits> getAllDeposits() {
-        return depositService.getAllDeposits();
+    public ResponseEntity<List<Map<String, Object>>> getAllDeposits() {
+        return ResponseEntity.ok(depositService.getAllDepositsWithUserDetails());
     }
 
     @GetMapping("/summary/{email}")
