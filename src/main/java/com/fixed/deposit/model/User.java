@@ -20,5 +20,8 @@ public class User {
     @Column(unique = true, nullable = true)
     private String panNo;
 
+    @Column(nullable = false)
+    private String status = "ACTIVE";
+
 
 }

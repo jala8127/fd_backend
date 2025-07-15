@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository;
 public interface DepositsRepository extends JpaRepository<Deposits, Long> {
     List<Deposits> findByUserEmail(String email);
 
+    boolean existsByUserEmailAndStatus(String email, String status);
+
 }

@@ -26,7 +26,7 @@ public class Payout {
 
     private double amountPaid;
 
-    private String payoutType; // MATURITY / PREMATURE / INTEREST_ONLY
+    private String payoutType; // MATURITY / PREMATURE / INTEREST
 
     private LocalDate payoutDate;
 

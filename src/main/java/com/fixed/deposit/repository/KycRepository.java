@@ -19,4 +19,6 @@ public interface KycRepository extends JpaRepository<Kyc, Long> {
 
     Optional<Kyc> findByUser_UserId(Long userId);
 
+    List<Kyc> findByStatusIn(List<String> statuses);
+
 }

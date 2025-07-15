@@ -4,6 +4,7 @@ import com.fixed.deposit.model.Employee;
 import com.fixed.deposit.model.User;
 import com.fixed.deposit.repository.EmployeeRepository;
 import com.fixed.deposit.repository.UserRepository;
+import com.fixed.deposit.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +21,14 @@ import java.util.Optional;
 @CrossOrigin(origins = "http://localhost:4200")
 public class AuthController {
 
-
     @Autowired
     private JavaMailSender mailSender;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserService userService;
 
     @Autowired
     private EmployeeRepository employeeRepository;
@@ -57,35 +60,34 @@ public class AuthController {
         }
 
         user.setRole("Customer");
+        user.setStatus("ACTIVE"); // ensure user is active
         userRepository.save(user);
         return ResponseEntity.ok("Account created successfully");
     }
 
-    private String generateOtp() {
-        int otp = (int)(Math.random() * 900000) + 100000;
-        return String.valueOf(otp);
-    }
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> loginData) {
         String email = loginData.get("email");
         String mpin = loginData.get("mpin");
 
-        System.out.println("Login attempt: " + email + " - " + mpin); //
-
-        Optional<User> optionalUser = userRepository.findByEmail(email);
-
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.status(404).body("Email not found");
+        Optional<User> optional = userRepository.findByEmail(email);
+        if (optional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Email not found");
         }
 
-        User user = optionalUser.get();
-        if (!user.getMpin().equals(mpin)) {
-            return ResponseEntity.status(401).body("Invalid MPIN");
+        User customer = optional.get();
+
+        if (!"ACTIVE".equalsIgnoreCase(customer.getStatus())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Account is deactivated");
         }
 
-        return ResponseEntity.ok(user);
+        if (!customer.getMpin().equals(mpin)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid MPIN");
+        }
 
+        return ResponseEntity.ok(customer);
     }
+
     @PostMapping("/employees/login")
     public ResponseEntity<?> employeeLogin(@RequestBody Map<String, String> loginData) {
         String email = loginData.get("email");
@@ -106,9 +108,21 @@ public class AuthController {
 
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/check-email/{email}")
     public ResponseEntity<Boolean> checkEmailExists(@PathVariable String email) {
         boolean exists = userRepository.existsByEmail(email);
         return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping("/check-phone")
+    public ResponseEntity<Boolean> checkPhone(@RequestParam String phone) {
+        boolean exists = userRepository.existsByPhone(phone);
+        return ResponseEntity.ok(exists);
+    }
+
+    private String generateOtp() {
+        int otp = (int)(Math.random() * 900000) + 100000;
+        return String.valueOf(otp);
     }
 }

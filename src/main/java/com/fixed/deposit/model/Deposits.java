@@ -15,7 +15,7 @@ public class Deposits {
 
     private String userEmail;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "scheme_id")
     private Schemes scheme;
 
@@ -29,4 +29,8 @@ public class Deposits {
     private String payoutType;
     private double interestEarned;
     private String status;
+
+    public String getSchemeName() {
+        return scheme != null ? scheme.getSchemeName() : null;
+    }
 }

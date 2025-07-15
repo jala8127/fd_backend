@@ -92,9 +92,13 @@ public class KycController {
                 .orElse(ResponseEntity.badRequest().body("KYC Not Found"));
     }
 
-    // Get All KYC Records
     @GetMapping("/all")
     public List<Kyc> getAllKyc() {
         return kycRepo.findAll();
+    }
+    // Get Completed KYCs (new)
+    @GetMapping("/completed")
+    public List<Kyc> getCompletedKycs() {
+        return kycRepo.findByStatusIn(List.of("APPROVED", "REJECTED"));
     }
 }

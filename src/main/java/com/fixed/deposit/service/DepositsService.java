@@ -57,6 +57,7 @@ public class DepositsService {
     }
 
     public List<Deposits> getDepositsByUser(String email) {
+
         return depositRepo.findByUserEmail(email);
     }
 
@@ -77,6 +78,8 @@ public class DepositsService {
             map.put("payoutType", deposit.getPayoutType());
             map.put("interestEarned", deposit.getInterestEarned());
             map.put("status", deposit.getStatus());
+
+            map.put("schemeName", deposit.getScheme().getSchemeName());
 
             // Fetch user details from userEmail
             Optional<User> userOpt = userRepo.findByEmail(deposit.getUserEmail());
