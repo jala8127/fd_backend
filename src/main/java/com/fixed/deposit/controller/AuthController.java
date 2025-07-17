@@ -13,6 +13,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -124,5 +125,19 @@ public class AuthController {
     private String generateOtp() {
         int otp = (int)(Math.random() * 900000) + 100000;
         return String.valueOf(otp);
+    }
+    @GetMapping("/rehash-employee-passwords")
+    public ResponseEntity<String> rehashPasswords() {
+        List<Employee> employees = employeeRepository.findAll();
+        for (Employee emp : employees) {
+            String pwd = emp.getPassword();
+            if (!pwd.startsWith("$2a$")) {
+                String hashed = passwordEncoder.encode(pwd);
+                emp.setPassword(hashed);
+                employeeRepository.save(emp);
+            }
+        }
+        return ResponseEntity.ok("Passwords rehashed successfully.");
+//        GET http://localhost:8080/api/auth/rehash-employee-passwords
     }
 }

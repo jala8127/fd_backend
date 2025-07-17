@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -56,18 +57,15 @@ public class DepositsService {
         return "Deposit successfully created.";
     }
 
-    public List<Deposits> getDepositsByUser(String email) {
-
-        return depositRepo.findByUserEmail(email);
-    }
-
-    public List<Map<String, Object>> getAllDepositsWithUserDetails() {
-        List<Deposits> deposits = depositRepo.findAll();
+    public List<Map<String, Object>> getDepositsByUser(String email) {
+        List<Deposits> deposits = depositRepo.findByUserEmail(email);
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Deposits deposit : deposits) {
             Map<String, Object> map = new HashMap<>();
-            map.put("depositId", deposit.getId());
+            Schemes scheme = deposit.getScheme();
+
+            map.put("id", deposit.getId());
             map.put("userEmail", deposit.getUserEmail());
             map.put("amount", deposit.getAmount());
             map.put("interestRate", deposit.getInterestRate());
@@ -78,10 +76,91 @@ public class DepositsService {
             map.put("payoutType", deposit.getPayoutType());
             map.put("interestEarned", deposit.getInterestEarned());
             map.put("status", deposit.getStatus());
+            map.put("closeDate", deposit.getCloseDate());
 
-            map.put("schemeName", deposit.getScheme().getSchemeName());
+            if (scheme != null) {
+                map.put("schemeName", scheme.getSchemeName());
+                map.put("penalityRate", scheme.getPenality() != null ? scheme.getPenality() : 0.0);
+            } else {
+                map.put("schemeName", "Unknown");
+                map.put("penalityRate", 0.0);
+            }
 
-            // Fetch user details from userEmail
+            result.add(map);
+        }
+
+        return result;
+    }
+
+    public Map<String, Object> closeDeposit(Long depositId) {
+        Deposits deposit = depositRepo.findById(depositId)
+                .orElseThrow(() -> new RuntimeException("FD not found"));
+
+        if (!"ACTIVE".equalsIgnoreCase(deposit.getStatus())) {
+            throw new RuntimeException("FD already closed.");
+        }
+
+        Schemes scheme = deposit.getScheme();
+
+        LocalDate today = LocalDate.now();
+        deposit.setCloseDate(today);
+        deposit.setStatus("CLOSED");
+
+        long monthsHeld = ChronoUnit.MONTHS.between(deposit.getStartDate(), today);
+        monthsHeld = Math.max(monthsHeld, 1);
+
+        double penalityPercent = scheme.getPenality();
+        double earnedInterest = deposit.getAmount() * Math.pow(1 + deposit.getInterestRate() / 100, monthsHeld / 12.0) - deposit.getAmount();
+
+        double baseAmountForPenalty = deposit.getAmount() + earnedInterest;
+        double penalityAmount = baseAmountForPenalty * penalityPercent / 100.0;
+
+        double finalPayout = deposit.getAmount() + earnedInterest - penalityAmount;
+        deposit.setInterestEarned(earnedInterest);
+        deposit.setMaturityAmount(finalPayout);
+        depositRepo.save(deposit);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", deposit.getId());
+        response.put("schemeName", scheme.getSchemeName());
+        response.put("amount", deposit.getAmount());
+        response.put("tenureMonths", deposit.getTenureMonths());
+        response.put("expectedMaturityAmount", deposit.getMaturityAmount());
+        response.put("interestEarned", earnedInterest);
+        response.put("penality", penalityAmount);
+        response.put("earlyPayout", finalPayout);
+        response.put("closeDate", today);
+        response.put("status", "CLOSED");
+
+        return response;
+    }
+
+    public List<Map<String, Object>> getAllDepositsWithUserDetails() {
+        List<Deposits> deposits = depositRepo.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Deposits deposit : deposits) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", deposit.getId());
+            map.put("userEmail", deposit.getUserEmail());
+            map.put("amount", deposit.getAmount());
+            map.put("interestRate", deposit.getInterestRate());
+            map.put("tenureMonths", deposit.getTenureMonths());
+            map.put("startDate", deposit.getStartDate());
+            map.put("maturityDate", deposit.getMaturityDate());
+            map.put("maturityAmount", deposit.getMaturityAmount());
+            map.put("payoutType", deposit.getPayoutType());
+            map.put("interestEarned", deposit.getInterestEarned());
+            map.put("status", deposit.getStatus());
+            map.put("closeDate", deposit.getCloseDate());
+
+            Schemes scheme = deposit.getScheme();
+            if (scheme != null) {
+                map.put("schemeName", scheme.getSchemeName());
+            } else {
+                map.put("schemeName", "Unknown");
+            }
+
             Optional<User> userOpt = userRepo.findByEmail(deposit.getUserEmail());
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
@@ -124,6 +203,38 @@ public class DepositsService {
         response.put("interestEarned", totalInterest);
         response.put("upcomingMaturity", nextMaturity.map(LocalDate::toString).orElse(null));
 
+        return response;
+    }
+
+    public Map<String, Object> previewCloseDeposit(Long depositId) {
+        Deposits deposit = depositRepo.findById(depositId)
+                .orElseThrow(() -> new RuntimeException("FD not found"));
+
+        if (!"ACTIVE".equalsIgnoreCase(deposit.getStatus())) {
+            throw new RuntimeException("FD already closed.");
+        }
+
+        Schemes scheme = deposit.getScheme();
+        LocalDate today = LocalDate.now();
+        long monthsHeld = ChronoUnit.MONTHS.between(deposit.getStartDate(), today);
+        monthsHeld = Math.max(monthsHeld, 1);
+
+        double penalityPercent = scheme.getPenality();
+        double earnedInterest = deposit.getAmount() * Math.pow(1 + deposit.getInterestRate() / 100, monthsHeld / 12.0) - deposit.getAmount();
+        double baseAmount = deposit.getAmount() + earnedInterest;
+        double penalityAmount = baseAmount * penalityPercent / 100.0;
+        double finalPayout = baseAmount - penalityAmount;
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", deposit.getId());
+        response.put("schemeName", scheme.getSchemeName());
+        response.put("amount", deposit.getAmount());
+        response.put("tenureMonths", deposit.getTenureMonths());
+        response.put("expectedMaturityAmount", finalPayout);
+        response.put("interestEarned", earnedInterest);
+        response.put("penality", penalityAmount);
+        response.put("earlyPayout", finalPayout);
+        response.put("status", "ACTIVE");
         return response;
     }
 }

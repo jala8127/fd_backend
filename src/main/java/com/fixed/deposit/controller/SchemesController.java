@@ -50,4 +50,14 @@ public class SchemesController {
         schemesService.updateSeniorRates(schemes);
         return ResponseEntity.ok().build();
     }
+    // In your SchemesController
+    @PutMapping("/penalty")
+    public ResponseEntity<Void> updatePenalty(@RequestBody Double penaltyRate) {
+        schemesService.updatePenaltyRate(penaltyRate);
+        return ResponseEntity.ok().build();
+    }
+    @GetMapping("/penalty")
+    public ResponseEntity<Double> getCurrentPenaltyRate() {
+        return ResponseEntity.ok(schemesService.getCurrentPenaltyRate());
+    }
 }

@@ -48,4 +48,18 @@ public class DepositsController {
             return ResponseEntity.internalServerError().body(Map.of("error", "Error calculating summary"));
         }
     }
+
+    @PutMapping("/close/{id}")
+    public ResponseEntity<?> closeFd(@PathVariable Long id) {
+        try {
+            Map<String, Object> response = depositService.closeDeposit(id);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error closing FD: " + e.getMessage());
+        }
+    }
+    @GetMapping("/preview-close/{id}")
+    public ResponseEntity<Map<String, Object>> previewFdClosure(@PathVariable Long id) {
+        return ResponseEntity.ok(depositService.previewCloseDeposit(id));
+    }
 }

@@ -19,7 +19,7 @@ public class PaymentsController {
     @PostMapping("/create")
     public ResponseEntity<Map<String, String>> createPayment(@RequestBody Map<String, Object> body) {
         Map<String, String> response = paymentsService.createPayment(body);
-        if ("FAILURE".equals(response.get("status"))) {
+        if ("FAILURE".equalsIgnoreCase(response.get("status"))) {
             return ResponseEntity.internalServerError().body(response);
         }
         return ResponseEntity.ok(response);

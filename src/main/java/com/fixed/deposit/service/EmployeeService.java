@@ -3,11 +3,8 @@ package com.fixed.deposit.service;
 import com.fixed.deposit.model.Employee;
 import com.fixed.deposit.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-
 import java.util.List;
 
 @Service
@@ -43,17 +40,5 @@ public class EmployeeService {
         }
         return repository.save(emp);
     }
-    @GetMapping("/rehash-employee-passwords")
-    public ResponseEntity<String> rehashPasswords() {
-        List<Employee> employees = employeeRepository.findAll();
-        for (Employee emp : employees) {
-            String pwd = emp.getPassword();
-            if (!pwd.startsWith("$2a$")) { // only hash if not already hashed
-                String hashed = passwordEncoder.encode(pwd);
-                emp.setPassword(hashed);
-                employeeRepository.save(emp); // persist the change
-            }
-        }
-        return ResponseEntity.ok("Passwords rehashed successfully.");
-    }
+
 }

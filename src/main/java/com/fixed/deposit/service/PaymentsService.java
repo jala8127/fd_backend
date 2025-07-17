@@ -8,6 +8,8 @@ import com.fixed.deposit.repository.PaymentsRepository;
 import com.fixed.deposit.repository.SchemesRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+
 
 import java.time.LocalDate;
 import java.util.*;
@@ -32,6 +34,7 @@ public class PaymentsService {
             Double amount = ((Number) body.get("amount")).doubleValue();
             String mode = (String) body.get("paymentMode");
             String status = (String) body.get("status");
+            String paymentDetails = (String) body.get("paymentDetails");
 
             Payments payment = new Payments();
             payment.setUserEmail(email);
@@ -41,6 +44,8 @@ public class PaymentsService {
             payment.setPaymentMode(mode);
             payment.setStatus(status);
             payment.setTransactionId(UUID.randomUUID().toString());
+            payment.setPaymentDate(LocalDateTime.now());
+            payment.setPaymentDetails(paymentDetails);
             paymentRepo.save(payment);
 
             if ("SUCCESS".equalsIgnoreCase(status)) {
@@ -52,7 +57,7 @@ public class PaymentsService {
 
                 Deposits deposit = new Deposits();
                 deposit.setUserEmail(email);
-                deposit.getScheme().getSchemeName();
+                deposit.setScheme(scheme);
                 deposit.setAmount(amount);
                 deposit.setInterestRate(scheme.getInterestRate());
                 deposit.setTenureMonths(scheme.getTenureMonths());
@@ -66,13 +71,16 @@ public class PaymentsService {
             }
 
             return Map.of(
-                    "message", "Payment processed",
+                    "message", "Payment processed successfully",
                     "status", status
             );
 
         } catch (Exception e) {
             e.printStackTrace();
-            return Map.of("message", "Error processing payment", "status", "FAILURE");
+            return Map.of(
+                    "message", "Error processing payment",
+                    "status", "FAILURE"
+            );
         }
     }
 

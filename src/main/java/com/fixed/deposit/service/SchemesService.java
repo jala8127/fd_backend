@@ -52,6 +52,7 @@ public class SchemesService {
         }
         return null;
     }
+
     public void updateSeniorRates(List<Schemes> updatedSchemes) {
         for (Schemes incoming : updatedSchemes) {
             Schemes existing = schemesRepo.findById(incoming.getId()).orElse(null);
@@ -60,5 +61,22 @@ public class SchemesService {
                 schemesRepo.save(existing);
             }
         }
+    }
+
+    public void updatePenaltyRate(Double penaltyRate) {
+        List<Schemes> allSchemes = schemesRepo.findAll();
+        for (Schemes scheme : allSchemes) {
+            scheme.setPenality(penaltyRate);
+        }
+        schemesRepo.saveAll(allSchemes);
+    }
+    public Double getCurrentPenaltyRate() {
+        List<Schemes> schemes = schemesRepo.findAll();
+
+        return schemes.stream()
+                .filter(s -> s.getPenality() != null)
+                .mapToDouble(Schemes::getPenality)
+                .findFirst()
+                .orElse(0.0);
     }
 }

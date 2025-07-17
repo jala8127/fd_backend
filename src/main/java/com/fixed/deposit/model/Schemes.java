@@ -22,4 +22,5 @@ public class Schemes {
     private String payout;
 
     private Double seniorBonusRate;
+    private Double penality;
 }

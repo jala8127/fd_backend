@@ -24,6 +24,7 @@ public class Deposits {
     private Double interestRate;
     private Integer tenureMonths;
     private LocalDate startDate;
+    private LocalDate closeDate;
     private LocalDate maturityDate;
     private Double maturityAmount;
     private String payoutType;
