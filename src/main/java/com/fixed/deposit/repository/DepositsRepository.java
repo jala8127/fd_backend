@@ -11,4 +11,6 @@ public interface DepositsRepository extends JpaRepository<Deposits, Long> {
 
     boolean existsByUserEmailAndStatus(String email, String status);
 
+    List<Deposits> findByUserEmailAndStatus(String email, String status);
+
 }

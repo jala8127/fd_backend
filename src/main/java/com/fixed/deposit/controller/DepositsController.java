@@ -62,4 +62,13 @@ public class DepositsController {
     public ResponseEntity<Map<String, Object>> previewFdClosure(@PathVariable Long id) {
         return ResponseEntity.ok(depositService.previewCloseDeposit(id));
     }
+    @GetMapping("/closed/{email}")
+    public ResponseEntity<?> getClosedDeposits(@PathVariable String email) {
+        try {
+            return ResponseEntity.ok(depositService.getClosedDepositsByUser(email));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error fetching closed deposits");
+        }
+    }
+
 }

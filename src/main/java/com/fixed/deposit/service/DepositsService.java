@@ -1,6 +1,7 @@
 package com.fixed.deposit.service;
 
 import com.fixed.deposit.model.Deposits;
+import com.fixed.deposit.model.Payout;
 import com.fixed.deposit.model.Schemes;
 import com.fixed.deposit.model.User;
 import com.fixed.deposit.repository.DepositsRepository;
@@ -24,6 +25,9 @@ public class DepositsService {
 
     @Autowired
     private UserRepository userRepo;
+
+    @Autowired
+    private PayoutService payoutService;
 
     public String createDeposit(Map<String, Object> body) {
         String email = (String) body.get("userEmail");
@@ -55,6 +59,57 @@ public class DepositsService {
 
         depositRepo.save(deposit);
         return "Deposit successfully created.";
+    }
+
+    public Map<String, Object> closeDeposit(Long depositId) {
+        Deposits deposit = depositRepo.findById(depositId)
+                .orElseThrow(() -> new RuntimeException("FD not found"));
+
+        if (!"ACTIVE".equalsIgnoreCase(deposit.getStatus())) {
+            throw new RuntimeException("FD already closed.");
+        }
+
+        Schemes scheme = deposit.getScheme();
+        LocalDate today = LocalDate.now();
+        deposit.setCloseDate(today);
+        deposit.setStatus("CLOSED");
+
+        long monthsHeld = ChronoUnit.MONTHS.between(deposit.getStartDate(), today);
+        monthsHeld = Math.max(monthsHeld, 1);
+
+        double penalityPercent = scheme.getPenality();
+        double earnedInterest = deposit.getAmount() * Math.pow(1 + deposit.getInterestRate() / 100, monthsHeld / 12.0) - deposit.getAmount();
+
+        double baseAmountForPenalty = deposit.getAmount() + earnedInterest;
+        double penalityAmount = baseAmountForPenalty * penalityPercent / 100.0;
+
+        double finalPayout = deposit.getAmount() + earnedInterest - penalityAmount;
+
+        deposit.setInterestEarned(earnedInterest);
+        deposit.setMaturityAmount(finalPayout);
+        depositRepo.save(deposit);
+
+        Payout payout = new Payout();
+        payout.setAmountPaid(finalPayout);
+        payout.setPayoutDate(today);
+        payout.setUserEmail(deposit.getUserEmail());
+        payout.setDeposit(deposit);
+        payout.setPayoutType("PREMATURE");
+        payoutService.createPayout(deposit, "PREMATURE", finalPayout);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", deposit.getId());
+        response.put("schemeName", scheme.getSchemeName());
+        response.put("amount", deposit.getAmount());
+        response.put("tenureMonths", deposit.getTenureMonths());
+        response.put("expectedMaturityAmount", deposit.getMaturityAmount());
+        response.put("interestEarned", earnedInterest);
+        response.put("penality", penalityAmount);
+        response.put("earlyPayout", finalPayout);
+        response.put("closeDate", today);
+        response.put("status", "CLOSED");
+
+        return response;
     }
 
     public List<Map<String, Object>> getDepositsByUser(String email) {
@@ -90,49 +145,6 @@ public class DepositsService {
         }
 
         return result;
-    }
-
-    public Map<String, Object> closeDeposit(Long depositId) {
-        Deposits deposit = depositRepo.findById(depositId)
-                .orElseThrow(() -> new RuntimeException("FD not found"));
-
-        if (!"ACTIVE".equalsIgnoreCase(deposit.getStatus())) {
-            throw new RuntimeException("FD already closed.");
-        }
-
-        Schemes scheme = deposit.getScheme();
-
-        LocalDate today = LocalDate.now();
-        deposit.setCloseDate(today);
-        deposit.setStatus("CLOSED");
-
-        long monthsHeld = ChronoUnit.MONTHS.between(deposit.getStartDate(), today);
-        monthsHeld = Math.max(monthsHeld, 1);
-
-        double penalityPercent = scheme.getPenality();
-        double earnedInterest = deposit.getAmount() * Math.pow(1 + deposit.getInterestRate() / 100, monthsHeld / 12.0) - deposit.getAmount();
-
-        double baseAmountForPenalty = deposit.getAmount() + earnedInterest;
-        double penalityAmount = baseAmountForPenalty * penalityPercent / 100.0;
-
-        double finalPayout = deposit.getAmount() + earnedInterest - penalityAmount;
-        deposit.setInterestEarned(earnedInterest);
-        deposit.setMaturityAmount(finalPayout);
-        depositRepo.save(deposit);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", deposit.getId());
-        response.put("schemeName", scheme.getSchemeName());
-        response.put("amount", deposit.getAmount());
-        response.put("tenureMonths", deposit.getTenureMonths());
-        response.put("expectedMaturityAmount", deposit.getMaturityAmount());
-        response.put("interestEarned", earnedInterest);
-        response.put("penality", penalityAmount);
-        response.put("earlyPayout", finalPayout);
-        response.put("closeDate", today);
-        response.put("status", "CLOSED");
-
-        return response;
     }
 
     public List<Map<String, Object>> getAllDepositsWithUserDetails() {
@@ -236,5 +248,37 @@ public class DepositsService {
         response.put("earlyPayout", finalPayout);
         response.put("status", "ACTIVE");
         return response;
+    }
+
+    public List<Map<String, Object>> getClosedDepositsByUser(String email) {
+        List<Deposits> deposits = depositRepo.findByUserEmailAndStatus(email, "CLOSED");
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Deposits deposit : deposits) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", deposit.getId());
+            map.put("userEmail", deposit.getUserEmail());
+            map.put("amount", deposit.getAmount());
+            map.put("interestRate", deposit.getInterestRate());
+            map.put("tenureMonths", deposit.getTenureMonths());
+            map.put("startDate", deposit.getStartDate());
+            map.put("maturityDate", deposit.getMaturityDate());
+            map.put("maturityAmount", deposit.getMaturityAmount());
+            map.put("payoutType", deposit.getPayoutType());
+            map.put("interestEarned", deposit.getInterestEarned());
+            map.put("status", deposit.getStatus());
+            map.put("closeDate", deposit.getCloseDate());
+
+            Schemes scheme = deposit.getScheme();
+            if (scheme != null) {
+                map.put("schemeName", scheme.getSchemeName());
+            } else {
+                map.put("schemeName", "Unknown");
+            }
+
+            result.add(map);
+        }
+
+        return result;
     }
 }
