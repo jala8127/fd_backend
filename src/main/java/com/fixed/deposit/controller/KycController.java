@@ -1,13 +1,14 @@
 package com.fixed.deposit.controller;
 
 import com.fixed.deposit.model.Kyc;
-import com.fixed.deposit.repository.KycRepository;
-import com.fixed.deposit.repository.UserRepository;
+import com.fixed.deposit.service.KycService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -17,88 +18,58 @@ import java.util.List;
 public class KycController {
 
     @Autowired
-    private KycRepository kycRepo;
+    private KycService kycService;
 
-    @Autowired
-    private UserRepository userRepo;
-
-    // Submit KYC
-    @PostMapping("/submit")
+    @PostMapping(value = "/submit", consumes = { "multipart/form-data" })
     public ResponseEntity<?> submitKyc(
-            @RequestParam Long userId,
-            @RequestParam String fullName,
-            @RequestParam String email,
-            @RequestParam String phone,
-            @RequestParam String dob,
-            @RequestParam String currentAddress,
-            @RequestParam String permanentAddress,
-            @RequestParam String panNumber,
-            @RequestParam String aadhaarNumber,
-            @RequestParam(required = false) MultipartFile aadhaarDocument) {
-
-        return userRepo.findById(userId)
-                .map(user -> {
-                    Kyc kyc = new Kyc();
-                    kyc.setUser(user);
-                    kyc.setFullName(fullName);
-                    kyc.setEmail(email);
-                    kyc.setPhone(phone);
-                    kyc.setDob(dob);
-                    kyc.setCurrentAddress(currentAddress);
-                    kyc.setPermanentAddress(permanentAddress);
-                    kyc.setPanNumber(panNumber);
-                    kyc.setAadhaarNumber(aadhaarNumber);
-                    kyc.setStatus("PENDING");
-
-                    if (aadhaarDocument != null && !aadhaarDocument.isEmpty()) {
-                        kyc.setAadhaarDocument(aadhaarDocument.getOriginalFilename());
-                        // Optionally store the file to disk or DB
-                    }
-
-                    kycRepo.save(kyc);
-                    return ResponseEntity.ok(Collections.singletonMap("message", "KYC Submitted"));
-                })
-                .orElse(ResponseEntity.badRequest().body(Collections.singletonMap("error", "User not found")));
+            @RequestPart("kycData") Kyc kycDetails,
+            @RequestPart("kycDocument") MultipartFile kycDocument) {
+        try {
+            // This now calls the correct service method
+            kycService.submitKyc(kycDetails, kycDocument);
+            return ResponseEntity.ok(Collections.singletonMap("message", "KYC Submitted Successfully"));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Failed to save document."));
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", e.getMessage()));
+        }
     }
-    // Get All Pending KYCs
+
     @GetMapping("/pending")
     public List<Kyc> getPendingKycs() {
-        return kycRepo.findByStatus("PENDING");
+        return kycService.getPendingKycs();
     }
 
-    // Approve KYC
     @PutMapping("/{id}/approve")
     public ResponseEntity<?> approveKyc(@PathVariable Long id) {
-        return kycRepo.findById(id)
-                .map(kyc -> {
-                    kyc.setStatus("APPROVED");
-                    kyc.setRejectionReason(null);
-                    kycRepo.save(kyc);
-                    return ResponseEntity.ok("KYC Approved");
-                })
-                .orElse(ResponseEntity.badRequest().body("KYC Not Found"));
+        try {
+            kycService.approveKyc(id);
+            return ResponseEntity.ok(Collections.singletonMap("message", "KYC Approved"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", e.getMessage()));
+        }
     }
 
-    // Reject KYC
     @PutMapping("/{id}/reject")
     public ResponseEntity<?> rejectKyc(@PathVariable Long id, @RequestBody String reason) {
-        return kycRepo.findById(id)
-                .map(kyc -> {
-                    kyc.setStatus("REJECTED");
-                    kyc.setRejectionReason(reason);
-                    kycRepo.save(kyc);
-                    return ResponseEntity.ok("KYC Rejected");
-                })
-                .orElse(ResponseEntity.badRequest().body("KYC Not Found"));
+        try {
+            kycService.rejectKyc(id, reason);
+            return ResponseEntity.ok(Collections.singletonMap("message", "KYC Rejected"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/all")
     public List<Kyc> getAllKyc() {
-        return kycRepo.findAll();
+        return kycService.getAllKycs();
     }
-    // Get Completed KYCs (new)
+
     @GetMapping("/completed")
     public List<Kyc> getCompletedKycs() {
-        return kycRepo.findByStatusIn(List.of("APPROVED", "REJECTED"));
+        return kycService.getCompletedKycs();
     }
 }

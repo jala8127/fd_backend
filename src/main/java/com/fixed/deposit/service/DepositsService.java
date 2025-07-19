@@ -193,6 +193,7 @@ public class DepositsService {
         List<Deposits> deposits = depositRepo.findByUserEmail(email);
 
         double totalInvested = deposits.stream()
+                .filter(d -> "ACTIVE".equalsIgnoreCase(d.getStatus()))
                 .mapToDouble(Deposits::getAmount)
                 .sum();
 
@@ -201,6 +202,7 @@ public class DepositsService {
                 .count();
 
         double totalInterest = deposits.stream()
+                .filter(d -> "ACTIVE".equalsIgnoreCase(d.getStatus()))
                 .mapToDouble(Deposits::getInterestEarned)
                 .sum();
 

@@ -1,18 +1,24 @@
 package com.fixed.deposit.controller;
 
+import com.fixed.deposit.model.Kyc;
 import com.fixed.deposit.model.User;
+import com.fixed.deposit.service.KycService;
 import com.fixed.deposit.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/user")
 @CrossOrigin(origins = "http://localhost:4200")
 public class UserController {
+
+    @Autowired
+    private KycService kycService;
 
     @Autowired
     private UserService userService;
@@ -38,6 +44,7 @@ public class UserController {
             return ResponseEntity.ok(result);
         }
     }
+
     @PutMapping("/users/{id}/soft-delete")
     public ResponseEntity<String> softDelete(@PathVariable Long id) {
         String result = userService.softDeleteUser(id);
@@ -49,5 +56,20 @@ public class UserController {
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result); // 404 Not Found
         }
+    }
+
+    /* This method is now corrected to handle the Optional<Kyc> return type.*/
+    @GetMapping("/kyc-status")
+    public ResponseEntity<?> getKycStatus(@RequestParam String email) {
+        // 1. Call the service method which returns an Optional<Kyc>
+        Optional<Kyc> kycOptional = kycService.getKycStatusByEmail(email);
+
+        // 2. Map the Optional to get the status string or a default value
+        String status = kycOptional
+                .map(Kyc::getStatus) // If Kyc object exists, get its status
+                .orElse("NOT_SUBMITTED"); // If not, the status is NOT_SUBMITTED
+
+        // 3. Return the status in the response
+        return ResponseEntity.ok(Collections.singletonMap("status", status));
     }
 }

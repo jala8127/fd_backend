@@ -12,7 +12,7 @@ public class Kyc {
     private Long id;
 
     @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "userId")
+    @JoinColumn(name = "user_id")
     private User user;
 
     private String fullName;
@@ -25,6 +25,9 @@ public class Kyc {
     private String aadhaarNumber;
     private String panNumber;
     private String aadhaarDocument;
+    private String bankName;
+    private String accountNumber;
+    private String ifscCode;
 
     private String status;
     private String rejectionReason;
