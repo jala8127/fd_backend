@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/kyc")
-@CrossOrigin("*")
+//@CrossOrigin("*")
 public class KycController {
 
     @Autowired

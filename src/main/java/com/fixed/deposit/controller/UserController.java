@@ -9,12 +9,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.Collections;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/user")
-@CrossOrigin(origins = "http://localhost:4200")
+//@CrossOrigin(origins = "http://localhost:4200")
 public class UserController {
 
     @Autowired
@@ -58,18 +59,27 @@ public class UserController {
         }
     }
 
-    /* This method is now corrected to handle the Optional<Kyc> return type.*/
     @GetMapping("/kyc-status")
     public ResponseEntity<?> getKycStatus(@RequestParam String email) {
-        // 1. Call the service method which returns an Optional<Kyc>
         Optional<Kyc> kycOptional = kycService.getKycStatusByEmail(email);
 
-        // 2. Map the Optional to get the status string or a default value
         String status = kycOptional
                 .map(Kyc::getStatus) // If Kyc object exists, get its status
                 .orElse("NOT_SUBMITTED"); // If not, the status is NOT_SUBMITTED
 
-        // 3. Return the status in the response
         return ResponseEntity.ok(Collections.singletonMap("status", status));
     }
+    @GetMapping("/profile")
+    public ResponseEntity<?> getLoggedInUserProfile(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No user is logged in.");
+        }
+
+        String email = principal.getName();
+
+        return userService.getUserProfileByEmail(email)
+                .map(ResponseEntity::ok) // If profile exists, return it with 200 OK
+                .orElseGet(() -> ResponseEntity.notFound().build()); // If not found, return 404
+    }
+
 }

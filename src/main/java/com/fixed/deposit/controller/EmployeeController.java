@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/employees")
-@CrossOrigin(origins = "*") // Enable CORS if needed
+//@CrossOrigin(origins = "*") // Enable CORS if needed
 public class EmployeeController {
 
     @Autowired
