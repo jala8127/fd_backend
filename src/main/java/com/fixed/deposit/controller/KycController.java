@@ -9,23 +9,41 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.security.Principal; // Import Principal
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/kyc")
-//@CrossOrigin("*")
 public class KycController {
 
     @Autowired
     private KycService kycService;
+
+    // --- NEW SECURE ENDPOINT FOR CUSTOMERS ---
+    @GetMapping("/my-status")
+    public ResponseEntity<?> getMyKycStatus(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+        }
+        String email = principal.getName();
+        Optional<Kyc> kycOptional = kycService.getKycStatusByEmail(email);
+
+        // Return the full KYC object if found, or a "not submitted" status if not.
+        return kycOptional
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.ok(Collections.singletonMap("status", "NOT_SUBMITTED")));
+    }
+
+
+    // --- All other admin-only methods remain the same ---
 
     @PostMapping(value = "/submit", consumes = { "multipart/form-data" })
     public ResponseEntity<?> submitKyc(
             @RequestPart("kycData") Kyc kycDetails,
             @RequestPart("kycDocument") MultipartFile kycDocument) {
         try {
-            // This now calls the correct service method
             kycService.submitKyc(kycDetails, kycDocument);
             return ResponseEntity.ok(Collections.singletonMap("message", "KYC Submitted Successfully"));
         } catch (IOException e) {

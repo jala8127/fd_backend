@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal; // Import Principal
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,23 @@ public class DepositsController {
 
     @Autowired
     private DepositsService depositService;
+
+    // --- NEW, SECURE ENDPOINT FOR CUSTOMERS ---
+    @GetMapping("/my-deposits")
+    public ResponseEntity<?> getMyDeposits(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("User not authenticated");
+        }
+        String email = principal.getName();
+        try {
+            return ResponseEntity.ok(depositService.getDepositsByUser(email));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error fetching deposits");
+        }
+    }
+
+
+    // --- All other methods remain the same ---
 
     @PostMapping("/create")
     public ResponseEntity<String> createDeposit(@RequestBody Map<String, Object> body) {
@@ -70,5 +88,4 @@ public class DepositsController {
             return ResponseEntity.internalServerError().body("Error fetching closed deposits");
         }
     }
-
 }

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -59,21 +60,29 @@ public class AppConfig implements WebMvcConfigurer {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // FIXED: Apply CORS settings from the WebMvcConfigurer below
                 .cors(withDefaults())
-                // Disable CSRF protection
                 .csrf(csrf -> csrf.disable())
-                // Set up authorization rules
                 .authorizeHttpRequests(authz -> authz
-                        // Permit all requests to the authentication, registration, and file upload endpoints
+                        // 1. Public endpoints that anyone can access
                         .requestMatchers("/api/auth/**", "/uploads/**").permitAll()
-                        // Any other request must be authenticated
+
+                        // 2. Specific Customer endpoints (checked before broad admin rules)
+                        .requestMatchers(HttpMethod.GET, "/api/kyc/my-status").hasRole("Customer")
+                        .requestMatchers(HttpMethod.GET, "/api/schemes/user/active").hasRole("Customer")
+                        .requestMatchers(HttpMethod.POST, "/api/kyc/submit").hasRole("Customer")
+                        .requestMatchers("/api/deposits/my-deposits").hasRole("Customer")
+
+                        // 3. Admin/Employee-only endpoints
+                        .requestMatchers("/api/admin/**", "/api/employees/**", "/api/kyc/**", "/api/schemes/**", "/api/user/all", "/api/deposits/all", "/api/payments/all", "/api/payouts").hasAnyRole("Admin", "Manager", "employee")
+
+                        // 4. General Customer endpoints (checked last)
+                        .requestMatchers("/api/user/**", "/api/deposits/**", "/api/payments/**", "/api/payouts/**").hasRole("Customer")
+
+                        // 5. Any other request must be authenticated
                         .anyRequest().authenticated()
                 )
-                // Configure session management to be stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // Add our custom JWT filter to check the token on every request
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -81,7 +90,7 @@ public class AppConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**") // Apply to all endpoints
+        registry.addMapping("/**")
                 .allowedOrigins("http://localhost:4200")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

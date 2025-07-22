@@ -14,17 +14,18 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder; // Import the generic interface
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-//@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "http://localhost:4200")
 public class AuthController {
 
     @Autowired
@@ -43,12 +44,10 @@ public class AuthController {
     private EmployeeRepository employeeRepository;
 
     @Autowired
-    private JavaMailSender mailSender;
-
-    // FIXED: Inject the generic PasswordEncoder interface. Spring will provide the primary (BCrypt) bean.
-    @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JavaMailSender mailSender;
 
     @PostMapping("/login")
     public ResponseEntity<?> createAuthenticationToken(@RequestBody Map<String, String> loginData) {
@@ -66,6 +65,12 @@ public class AuthController {
         final UserDetails userDetails = authService.loadUserByUsername(email);
         final String jwt = jwtUtil.generateToken(userDetails);
 
+        userRepository.findByEmail(email).ifPresent(user -> {
+            String signature = jwtUtil.extractSignature(jwt);
+            user.setActiveToken(signature);
+            userRepository.save(user);
+        });
+
         return ResponseEntity.ok(Map.of("token", jwt, "email", email));
     }
 
@@ -75,38 +80,25 @@ public class AuthController {
         String password = loginData.get("password");
 
         Employee emp = employeeRepository.findByEmail(email);
-        // This will now use the correctly injected BCrypt encoder
         if (emp == null || !passwordEncoder.matches(password, emp.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "INVALID_CREDENTIALS", "message", "Invalid credentials"));
         }
 
-        final UserDetails userDetails = new org.springframework.security.core.userdetails.User(email, emp.getPassword(), new ArrayList<>());
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + emp.getRole());
+        final UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                email,
+                emp.getPassword(),
+                Collections.singletonList(authority)
+        );
         final String jwt = jwtUtil.generateToken(userDetails);
+
+        String signature = jwtUtil.extractSignature(jwt);
+        emp.setActiveToken(signature);
+        employeeRepository.save(emp);
 
         return ResponseEntity.ok(Map.of("token", jwt, "email", email, "role", emp.getRole()));
     }
 
-    @GetMapping("/rehash-employee-passwords")
-    public ResponseEntity<Map<String, Object>> rehashPasswords() {
-        List<Employee> employees = employeeRepository.findAll();
-        int count = 0;
-        for (Employee emp : employees) {
-            String pwd = emp.getPassword();
-            if (pwd != null && !pwd.startsWith("$2a$")) {
-                // This will now use the correctly injected BCrypt encoder
-                String hashed = passwordEncoder.encode(pwd);
-                emp.setPassword(hashed);
-                employeeRepository.save(emp);
-                count++;
-            }
-        }
-        return ResponseEntity.ok(Map.of(
-                "message", "Passwords rehashed successfully",
-                "updated", count
-        ));
-    }
-
-    // --- All other methods below remain unchanged ---
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestParam String email) {
         if (userRepository.existsByEmail(email)) {
@@ -144,6 +136,25 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> checkPhone(@RequestParam String phone) {
         boolean exists = userRepository.existsByPhone(phone);
         return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    @GetMapping("/rehash-employee-passwords")
+    public ResponseEntity<Map<String, Object>> rehashPasswords() {
+        List<Employee> employees = employeeRepository.findAll();
+        int count = 0;
+        for (Employee emp : employees) {
+            String pwd = emp.getPassword();
+            if (pwd != null && !pwd.startsWith("$2a$")) {
+                String hashed = passwordEncoder.encode(pwd);
+                emp.setPassword(hashed);
+                employeeRepository.save(emp);
+                count++;
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "message", "Passwords rehashed successfully",
+                "updated", count
+        ));
     }
 
     private String generateOtp() {

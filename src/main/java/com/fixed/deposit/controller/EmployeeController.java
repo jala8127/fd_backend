@@ -6,11 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/employees")
-//@CrossOrigin(origins = "*") // Enable CORS if needed
 public class EmployeeController {
 
     @Autowired
@@ -35,5 +36,44 @@ public class EmployeeController {
     public ResponseEntity<?> deleteEmployee(@PathVariable Long id) {
         employeeService.deleteEmployee(id);
         return ResponseEntity.ok().build();
+    }
+
+
+    @GetMapping("/admin/total-deposits")
+    public ResponseEntity<Map<String, Object>> getTotalDeposits() {
+        // FIXED: Changed from long to double to match the service method's return type
+        double total = employeeService.getTotalDeposits();
+        return ResponseEntity.ok(Map.of("total", total));
+    }
+
+    @GetMapping("/admin/monthly-payouts")
+    public ResponseEntity<Map<String, Object>> getMonthlyPayouts() {
+        double total = employeeService.getMonthlyPayouts();
+        return ResponseEntity.ok(Map.of("total", total));
+    }
+
+    @GetMapping("/admin/monthly-received")
+    public ResponseEntity<Map<String, Object>> getMonthlyReceived() {
+        double total = employeeService.getMonthlyReceived();
+        return ResponseEntity.ok(Map.of("total", total));
+    }
+
+    @GetMapping("/admin/recent-transactions")
+    public ResponseEntity<List<Map<String, Object>>> getRecentTransactions() {
+        List<Map<String, Object>> transactions = employeeService.getRecentTransactions();
+        return ResponseEntity.ok(transactions);
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getLoggedInEmployeeProfile(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("No employee is logged in.");
+        }
+        String email = principal.getName();
+        Employee employee = employeeService.getEmployeeByEmail(email);
+        if (employee == null) {
+            return ResponseEntity.status(404).body("Employee profile not found.");
+        }
+        return ResponseEntity.ok(employee);
     }
 }

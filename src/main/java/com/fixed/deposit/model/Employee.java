@@ -21,4 +21,7 @@ public class Employee {
     @Lob
     @Column(nullable = true)
     private String photoUrl;
+
+    @Column(nullable = true)
+    private String activeToken;
 }

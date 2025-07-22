@@ -6,15 +6,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/schemes")
-//@CrossOrigin("*")
 public class SchemesController {
 
     @Autowired
     private SchemesService schemesService;
+
+    @GetMapping("/user/active")
+    public ResponseEntity<List<Schemes>> getActiveSchemesForUser(Principal principal) {
+        String email = principal.getName();
+        return ResponseEntity.ok(schemesService.getActiveSchemesForUser(email));
+    }
 
     @PostMapping("/add")
     public ResponseEntity<?> addSchemes(@RequestBody Schemes scheme) {
@@ -50,7 +56,6 @@ public class SchemesController {
         schemesService.updateSeniorRates(schemes);
         return ResponseEntity.ok().build();
     }
-    // In your SchemesController
     @PutMapping("/penalty")
     public ResponseEntity<Void> updatePenalty(@RequestBody Double penaltyRate) {
         schemesService.updatePenaltyRate(penaltyRate);

@@ -23,5 +23,6 @@ public class User {
     @Column(nullable = false)
     private String status = "ACTIVE";
 
-
+    @Column(nullable = true)
+    private String activeToken;
 }
