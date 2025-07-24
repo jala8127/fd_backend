@@ -44,7 +44,7 @@ public class KycService {
         kycToSave.setDob(formData.getDob());
         kycToSave.setCurrentAddress(formData.getCurrentAddress());
         kycToSave.setPermanentAddress(formData.getPermanentAddress());
-        kycToSave.setPanNumber(formData.getPanNumber());
+        //kycToSave.setPanNumber(formData.getPanNumber());
         kycToSave.setAadhaarNumber(formData.getAadhaarNumber());
         kycToSave.setBankName(formData.getBankName());
         kycToSave.setAccountNumber(formData.getAccountNumber());

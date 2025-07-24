@@ -14,7 +14,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -43,17 +42,17 @@ public class AppConfig implements WebMvcConfigurer {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    @Qualifier("noOpPasswordEncoder")
-    public PasswordEncoder noOpPasswordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
-    }
+//    @Bean
+//    @Qualifier("noOpPasswordEncoder")
+//    public PasswordEncoder noOpPasswordEncoder() {
+//        return NoOpPasswordEncoder.getInstance();
+//    }
 
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http, @Qualifier("noOpPasswordEncoder") PasswordEncoder noOpPasswordEncoder) throws Exception {
+    public AuthenticationManager authenticationManager(HttpSecurity http, PasswordEncoder passwordEncoder) throws Exception {
         AuthenticationManagerBuilder authenticationManagerBuilder =
                 http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder.userDetailsService(authService).passwordEncoder(noOpPasswordEncoder);
+        authenticationManagerBuilder.userDetailsService(authService).passwordEncoder(passwordEncoder);
         return authenticationManagerBuilder.build();
     }
 
@@ -63,22 +62,20 @@ public class AppConfig implements WebMvcConfigurer {
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                        // 1. Public endpoints that anyone can access
                         .requestMatchers("/api/auth/**", "/uploads/**").permitAll()
 
-                        // 2. Specific Customer endpoints (checked before broad admin rules)
                         .requestMatchers(HttpMethod.GET, "/api/kyc/my-status").hasRole("Customer")
                         .requestMatchers(HttpMethod.GET, "/api/schemes/user/active").hasRole("Customer")
                         .requestMatchers(HttpMethod.POST, "/api/kyc/submit").hasRole("Customer")
                         .requestMatchers("/api/deposits/my-deposits").hasRole("Customer")
 
-                        // 3. Admin/Employee-only endpoints
-                        .requestMatchers("/api/admin/**", "/api/employees/**", "/api/kyc/**", "/api/schemes/**", "/api/user/all", "/api/deposits/all", "/api/payments/all", "/api/payouts").hasAnyRole("Admin", "Manager", "employee")
+                        .requestMatchers("/api/admin/**", "/api/employees/**", "/api/kyc/**", "/api/schemes/**", "/api/user/all", "/api/user/users/*/soft-delete", "/api/deposits/all", "/api/payments/all", "/api/payouts").hasAnyRole("Admin", "Manager", "employee")
 
-                        // 4. General Customer endpoints (checked last)
                         .requestMatchers("/api/user/**", "/api/deposits/**", "/api/payments/**", "/api/payouts/**").hasRole("Customer")
 
-                        // 5. Any other request must be authenticated
+                        // In AppConfig.java -> securityFilterChain method
+                        .requestMatchers("/api/auth/rehash-user-mpins").hasRole("Admin")
+
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

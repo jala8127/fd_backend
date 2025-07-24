@@ -114,7 +114,7 @@ public class UserService {
         Optional<Kyc> kycOpt = kycRepository.findByUser_Email(user.getEmail());
         userProfile.put("status", kycOpt.map(Kyc::getStatus).orElse("Not Submitted"));
         userProfile.put("address", kycOpt.map(Kyc::getCurrentAddress).orElse("N/A"));
-        userProfile.put("panNo", kycOpt.map(Kyc::getPanNumber).orElse("N/A")); // Assuming panNo is in Kyc
+        //userProfile.put("panNo", kycOpt.map(Kyc::getPanNumber).orElse("N/A")); // Assuming panNo is in Kyc
 
         // Bank details from KycRepository
         userProfile.put("bankName", kycOpt.map(Kyc::getBankName).orElse("N/A"));

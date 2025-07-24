@@ -17,8 +17,6 @@ public class User {
     private String role;
     private String mpin;
 
-    @Column(unique = true, nullable = true)
-    private String panNo;
 
     @Column(nullable = false)
     private String status = "ACTIVE";

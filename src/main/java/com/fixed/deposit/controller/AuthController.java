@@ -157,6 +157,29 @@ public class AuthController {
         ));
     }
 
+    @GetMapping("/rehash-user-mpins")
+    public ResponseEntity<Map<String, Object>> rehashUserMpins() {
+        // This finds all users in your database.
+        List<User> users = userRepository.findAll();
+        int count = 0;
+        for (User user : users) {
+            String mpin = user.getMpin();
+
+            // This check is important! It ensures we only hash MPINs that are not already hashed.
+            if (mpin != null && !mpin.startsWith("$2a$")) {
+                // Use the secure password encoder to hash the plain-text MPIN.
+                String hashedMpin = passwordEncoder.encode(mpin);
+                user.setMpin(hashedMpin);
+                userRepository.save(user);
+                count++;
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "message", "User MPINs were successfully re-hashed.",
+                "updated_users", count
+        ));
+    }
+
     private String generateOtp() {
         int otp = (int) (Math.random() * 900000) + 100000;
         return String.valueOf(otp);
