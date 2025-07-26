@@ -2,11 +2,13 @@ package com.fixed.deposit.controller;
 
 import com.fixed.deposit.model.Deposits;
 import com.fixed.deposit.service.DepositsService;
+import com.fixed.deposit.service.PaymentsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal; // Import Principal
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -17,7 +19,9 @@ public class DepositsController {
     @Autowired
     private DepositsService depositService;
 
-    // --- NEW, SECURE ENDPOINT FOR CUSTOMERS ---
+    @Autowired
+    private PaymentsService paymentsService;
+
     @GetMapping("/my-deposits")
     public ResponseEntity<?> getMyDeposits(Principal principal) {
         if (principal == null) {
@@ -31,16 +35,19 @@ public class DepositsController {
         }
     }
 
-
-    // --- All other methods remain the same ---
-
     @PostMapping("/create")
-    public ResponseEntity<String> createDeposit(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> createDepositAndPayment(@RequestBody Map<String, Object> body, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "User not authenticated."));
+        }
+        String userEmail = principal.getName();
+        body.put("userEmail", userEmail);
+
         try {
-            String result = depositService.createDeposit(body);
-            return ResponseEntity.ok(result);
+            paymentsService.createPayment(body);
+            return ResponseEntity.ok(Map.of("message", "Deposit created successfully."));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error creating deposit: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", "Error creating deposit: " + e.getMessage()));
         }
     }
 

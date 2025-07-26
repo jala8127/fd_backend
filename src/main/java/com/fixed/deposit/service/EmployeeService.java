@@ -3,9 +3,12 @@ package com.fixed.deposit.service;
 import com.fixed.deposit.model.Employee;
 import com.fixed.deposit.model.User;
 import com.fixed.deposit.repository.*;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,7 +32,13 @@ public class EmployeeService {
     private DepositsRepository depositsRepository;
 
     @Autowired
+    private DepositsService depositsService;
+
+    @Autowired
     private PayoutRepository payoutRepository;
+
+    @Autowired
+    private PaymentsService paymentsService;
 
     @Autowired
     private PaymentsRepository paymentsRepository;
@@ -38,7 +47,6 @@ public class EmployeeService {
     private UserRepository userRepository;
 
 
-    // --- RESTORED EMPLOYEE CRUD METHODS ---
     public List<Employee> getAllEmployees() {
         return repository.findAll();
     }
@@ -68,8 +76,6 @@ public class EmployeeService {
     public Employee getEmployeeByEmail(String email) {
         return repository.findByEmail(email);
     }
-
-    // --- ADMIN DASHBOARD LOGIC ---
 
     public double getTotalDeposits() {
         return depositsRepository.sumAmountByStatus("ACTIVE");
@@ -104,5 +110,27 @@ public class EmployeeService {
                     return transactionMap;
                 })
                 .collect(Collectors.toList());
+    }
+    public void createCustomer(User newCustomer) {
+        if (userRepository.existsByEmail(newCustomer.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A customer with this email already exists.");
+        }
+        if (userRepository.existsByPhone(newCustomer.getPhone())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A customer with this phone number already exists.");
+        }
+
+        newCustomer.setMpin(passwordEncoder.encode(newCustomer.getMpin()));
+
+        newCustomer.setRole("Customer");
+        newCustomer.setStatus("ACTIVE");
+
+        userRepository.save(newCustomer);
+    }
+    @Transactional
+    public void createManualDeposit(Map<String, Object> body) {
+        paymentsService.createPayment(body);
+    }
+    public List<PaymentsRepository.ChartDataProjection> getMonthlyChartData() {
+        return paymentsRepository.getMonthlyChartData();
     }
 }

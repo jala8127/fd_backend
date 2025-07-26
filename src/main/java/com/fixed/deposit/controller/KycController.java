@@ -5,13 +5,15 @@ import com.fixed.deposit.service.KycService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.security.Principal; // Import Principal
+import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -21,7 +23,6 @@ public class KycController {
     @Autowired
     private KycService kycService;
 
-    // --- NEW SECURE ENDPOINT FOR CUSTOMERS ---
     @GetMapping("/my-status")
     public ResponseEntity<?> getMyKycStatus(Principal principal) {
         if (principal == null) {
@@ -30,14 +31,11 @@ public class KycController {
         String email = principal.getName();
         Optional<Kyc> kycOptional = kycService.getKycStatusByEmail(email);
 
-        // Return the full KYC object if found, or a "not submitted" status if not.
         return kycOptional
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.ok(Collections.singletonMap("status", "NOT_SUBMITTED")));
     }
 
-
-    // --- All other admin-only methods remain the same ---
 
     @PostMapping(value = "/submit", consumes = { "multipart/form-data" })
     public ResponseEntity<?> submitKyc(
@@ -89,5 +87,20 @@ public class KycController {
     @GetMapping("/completed")
     public List<Kyc> getCompletedKycs() {
         return kycService.getCompletedKycs();
+    }
+
+    @PostMapping("/admin-submit")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EMPLOYEE')") // Secures the endpoint for admins/employees
+    public ResponseEntity<?> adminSubmitKyc(@RequestPart("kycData") Kyc kycData,
+                                            @RequestPart("kycDocument") MultipartFile kycDocument) {
+        try {
+            Kyc savedKyc = kycService.adminSubmitKyc(kycData, kycDocument);
+            return ResponseEntity.ok(savedKyc);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error saving the document."));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

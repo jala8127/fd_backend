@@ -2,7 +2,6 @@ package com.fixed.deposit.config;
 
 import com.fixed.deposit.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,12 +41,6 @@ public class AppConfig implements WebMvcConfigurer {
         return new BCryptPasswordEncoder();
     }
 
-//    @Bean
-//    @Qualifier("noOpPasswordEncoder")
-//    public PasswordEncoder noOpPasswordEncoder() {
-//        return NoOpPasswordEncoder.getInstance();
-//    }
-
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http, PasswordEncoder passwordEncoder) throws Exception {
         AuthenticationManagerBuilder authenticationManagerBuilder =
@@ -64,6 +57,11 @@ public class AppConfig implements WebMvcConfigurer {
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/auth/**", "/uploads/**").permitAll()
 
+                        .requestMatchers(HttpMethod.PUT, "/api/deposits/close/*").hasAnyRole("Admin", "Manager", "employee", "Customer")
+                        .requestMatchers(HttpMethod.GET, "/api/deposits/preview-close/*").hasAnyRole("Admin", "Manager", "employee", "Customer")
+
+                        .requestMatchers(HttpMethod.POST, "/api/employees/add-customer").hasAnyRole("Admin", "Manager", "employee")
+
                         .requestMatchers(HttpMethod.GET, "/api/kyc/my-status").hasRole("Customer")
                         .requestMatchers(HttpMethod.GET, "/api/schemes/user/active").hasRole("Customer")
                         .requestMatchers(HttpMethod.POST, "/api/kyc/submit").hasRole("Customer")
@@ -73,7 +71,6 @@ public class AppConfig implements WebMvcConfigurer {
 
                         .requestMatchers("/api/user/**", "/api/deposits/**", "/api/payments/**", "/api/payouts/**").hasRole("Customer")
 
-                        // In AppConfig.java -> securityFilterChain method
                         .requestMatchers("/api/auth/rehash-user-mpins").hasRole("Admin")
 
                         .anyRequest().authenticated()

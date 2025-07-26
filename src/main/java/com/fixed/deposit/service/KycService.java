@@ -30,9 +30,8 @@ public class KycService {
     private String uploadDir;
 
     public Kyc submitKyc(Kyc formData, MultipartFile kycDocument) throws IOException {
-        // 1. Find the user associated with the KYC
-        User user = userRepository.findById(formData.getUser().getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + formData.getUser().getUserId()));
+        User user = userRepository.findByEmail(formData.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + formData.getEmail()));
 
         Kyc kycToSave = kycRepository.findByUser_UserId(user.getUserId())
                 .orElseGet(Kyc::new);
@@ -44,7 +43,7 @@ public class KycService {
         kycToSave.setDob(formData.getDob());
         kycToSave.setCurrentAddress(formData.getCurrentAddress());
         kycToSave.setPermanentAddress(formData.getPermanentAddress());
-        //kycToSave.setPanNumber(formData.getPanNumber());
+        kycToSave.setPanNumber(formData.getPanNumber());
         kycToSave.setAadhaarNumber(formData.getAadhaarNumber());
         kycToSave.setBankName(formData.getBankName());
         kycToSave.setAccountNumber(formData.getAccountNumber());
@@ -106,5 +105,39 @@ public class KycService {
         destination.getParentFile().mkdirs();
         file.transferTo(destination);
         return uniqueName;
+    }
+    // Add this new method to your existing KycService class
+
+    public Kyc adminSubmitKyc(Kyc formData, MultipartFile kycDocument) throws IOException {
+        // This logic is safe for an admin because it explicitly finds the user by the email in the form
+        User user = userRepository.findByEmail(formData.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + formData.getEmail()));
+
+        // The rest of the logic is the same as your submitKyc method
+        Kyc kycToSave = kycRepository.findByUser_UserId(user.getUserId())
+                .orElseGet(Kyc::new);
+
+        kycToSave.setUser(user);
+        kycToSave.setFullName(formData.getFullName());
+        kycToSave.setEmail(formData.getEmail());
+        kycToSave.setPhone(formData.getPhone());
+        kycToSave.setDob(formData.getDob());
+        kycToSave.setCurrentAddress(formData.getCurrentAddress());
+        kycToSave.setPermanentAddress(formData.getPermanentAddress());
+        kycToSave.setPanNumber(formData.getPanNumber());
+        kycToSave.setAadhaarNumber(formData.getAadhaarNumber());
+        kycToSave.setBankName(formData.getBankName());
+        kycToSave.setAccountNumber(formData.getAccountNumber());
+        kycToSave.setIfscCode(formData.getIfscCode());
+
+        kycToSave.setStatus("PENDING");
+        kycToSave.setRejectionReason(null);
+
+        if (kycDocument != null && !kycDocument.isEmpty()) {
+            String uniqueFileName = saveFile(kycDocument);
+            kycToSave.setAadhaarDocument(uniqueFileName);
+        }
+
+        return kycRepository.save(kycToSave);
     }
 }

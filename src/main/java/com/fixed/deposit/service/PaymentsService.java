@@ -28,7 +28,7 @@ public class PaymentsService {
 
     public Map<String, String> createPayment(Map<String, Object> body) {
         try {
-            String email = (String) body.get("email");
+            String userEmail = (String) body.get("userEmail");
             Long schemeId = ((Number) body.get("schemeId")).longValue();
             String schemeName = (String) body.get("schemeName");
             Double amount = ((Number) body.get("amount")).doubleValue();
@@ -37,7 +37,7 @@ public class PaymentsService {
             String paymentDetails = (String) body.get("paymentDetails");
 
             Payments payment = new Payments();
-            payment.setUserEmail(email);
+            payment.setUserEmail(userEmail);
             payment.setSchemeId(schemeId);
             payment.setSchemeName(schemeName);
             payment.setAmount(amount);
@@ -56,7 +56,7 @@ public class PaymentsService {
                         scheme.getTenureMonths() / 12.0);
 
                 Deposits deposit = new Deposits();
-                deposit.setUserEmail(email);
+                deposit.setUserEmail(userEmail);
                 deposit.setScheme(scheme);
                 deposit.setAmount(amount);
                 deposit.setInterestRate(scheme.getInterestRate());

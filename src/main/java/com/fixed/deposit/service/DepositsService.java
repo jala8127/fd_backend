@@ -6,6 +6,7 @@ import com.fixed.deposit.model.User;
 import com.fixed.deposit.repository.DepositsRepository;
 import com.fixed.deposit.repository.SchemesRepository;
 import com.fixed.deposit.repository.UserRepository;
+import jakarta.transaction.Transactional; // 1. Add this import
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +37,6 @@ public class DepositsService {
         Schemes scheme = schemeRepo.findById(schemeId)
                 .orElseThrow(() -> new RuntimeException("Scheme not found"));
 
-        // The interest rate from the scheme is the annual rate.
         double annualInterestRate = scheme.getInterestRate();
         int tenureMonths = scheme.getTenureMonths();
         LocalDate startDate = LocalDate.now();
@@ -45,14 +45,11 @@ public class DepositsService {
         double maturityAmount;
         double totalInterest;
 
-        // --- NEW: Separate calculation logic for Cumulative vs. Non-Cumulative ---
         if ("CUMULATIVE".equalsIgnoreCase(scheme.getSchemeType())) {
-            // For CUMULATIVE: Calculate compound interest, compounded monthly.
-            double monthlyRate = (annualInterestRate / 12.0) / 100.0; // Convert annual rate to monthly decimal
+            double monthlyRate = (annualInterestRate / 12.0) / 100.0;
             maturityAmount = amount * Math.pow(1 + monthlyRate, tenureMonths);
             totalInterest = maturityAmount - amount;
         } else {
-            // For NON-CUMULATIVE: Calculate simple interest for the full term.
             double tenureInYears = tenureMonths / 12.0;
             totalInterest = (amount * annualInterestRate * tenureInYears) / 100.0;
             maturityAmount = amount + totalInterest;
@@ -75,12 +72,13 @@ public class DepositsService {
         return "Deposit successfully created.";
     }
 
+    @Transactional // 2. Add this annotation to the method
     public Map<String, Object> closeDeposit(Long depositId) {
         Deposits deposit = depositRepo.findById(depositId)
                 .orElseThrow(() -> new RuntimeException("FD not found"));
 
         if (!"ACTIVE".equalsIgnoreCase(deposit.getStatus())) {
-            throw new RuntimeException("FD already closed.");
+            throw new RuntimeException("FD is already closed or processed.");
         }
 
         Map<String, Object> closureDetails = calculatePrematureClosure(deposit);
@@ -88,10 +86,10 @@ public class DepositsService {
         deposit.setCloseDate(LocalDate.now());
         deposit.setStatus("CLOSED");
         deposit.setInterestEarned((double) closureDetails.get("earnedInterest"));
-        deposit.setMaturityAmount((double) closureDetails.get("finalPayout"));
+        deposit.setMaturityAmount((double) closureDetails.get("earlyPayout"));
         depositRepo.save(deposit);
 
-        payoutService.createPayout(deposit, "PREMATURE", (double) closureDetails.get("finalPayout"));
+        payoutService.createPayout(deposit, "PREMATURE", (double) closureDetails.get("earlyPayout"));
 
         return closureDetails;
     }
@@ -101,13 +99,12 @@ public class DepositsService {
                 .orElseThrow(() -> new RuntimeException("FD not found"));
 
         if (!"ACTIVE".equalsIgnoreCase(deposit.getStatus())) {
-            throw new RuntimeException("FD already closed.");
+            throw new RuntimeException("FD is already closed.");
         }
 
         return calculatePrematureClosure(deposit);
     }
 
-    // --- METHOD for consistent premature closure calculations ---
     private Map<String, Object> calculatePrematureClosure(Deposits deposit) {
         Schemes scheme = deposit.getScheme();
         LocalDate today = LocalDate.now();
@@ -119,12 +116,10 @@ public class DepositsService {
         double penaltyPercent = scheme.getPenality() != null ? scheme.getPenality() : 0.0;
 
         if (monthsHeld < 1) {
-            // Rule: Withdrew within 1 month
             earnedInterest = 0.0;
             penaltyAmount = deposit.getAmount() * (penaltyPercent / 100.0);
             finalPayout = deposit.getAmount() - penaltyAmount;
         } else {
-            // Rule: Withdrew after 1 month
             if ("CUMULATIVE".equalsIgnoreCase(scheme.getSchemeType())) {
                 double monthlyRate = (deposit.getInterestRate() / 12.0) / 100.0;
                 double compoundedAmount = deposit.getAmount() * Math.pow(1 + monthlyRate, monthsHeld);
@@ -135,11 +130,10 @@ public class DepositsService {
                 finalPayout = baseForPenalty - penaltyAmount;
             } else { // NON-CUMULATIVE
                 if ("MONTHLY".equalsIgnoreCase(scheme.getPayout())) {
-                    earnedInterest = 0.0; // Interest is already paid out monthly
+                    earnedInterest = 0.0;
                     penaltyAmount = deposit.getAmount() * (penaltyPercent / 100.0);
                     finalPayout = deposit.getAmount() - penaltyAmount;
                 } else {
-                    // For Quarterly, Half-Yearly, Yearly: Calculate simple interest for months held
                     double tenureInYears = monthsHeld / 12.0;
                     earnedInterest = (deposit.getAmount() * deposit.getInterestRate() * tenureInYears) / 100.0;
 
@@ -155,7 +149,7 @@ public class DepositsService {
         response.put("schemeName", scheme.getSchemeName());
         response.put("amount", deposit.getAmount());
         response.put("tenureMonths", deposit.getTenureMonths());
-        response.put("interestEarned", earnedInterest);
+        response.put("earnedInterest", earnedInterest);
         response.put("penality", penaltyAmount);
         response.put("earlyPayout", finalPayout);
         response.put("closeDate", today);

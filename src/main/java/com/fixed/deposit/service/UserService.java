@@ -92,37 +92,31 @@ public class UserService {
         User user = userOpt.get();
         return user.getMpin().equals(mpin) && !"DELETED".equals(user.getStatus());
     }
-    // Add this new method inside your UserService class
 
     public Optional<Map<String, Object>> getUserProfileByEmail(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
-            return Optional.empty(); // User not found
+            return Optional.empty();
         }
 
         User user = userOpt.get();
         Map<String, Object> userProfile = new HashMap<>();
 
-        // Basic user details
         userProfile.put("userId", user.getUserId());
         userProfile.put("name", user.getName());
         userProfile.put("email", user.getEmail());
         userProfile.put("phone", user.getPhone());
-        userProfile.put("dob", user.getDob()); // Assuming dob is in the User model
+        userProfile.put("dob", user.getDob());
 
-        // KYC details from KycRepository
         Optional<Kyc> kycOpt = kycRepository.findByUser_Email(user.getEmail());
         userProfile.put("status", kycOpt.map(Kyc::getStatus).orElse("Not Submitted"));
         userProfile.put("address", kycOpt.map(Kyc::getCurrentAddress).orElse("N/A"));
-        //userProfile.put("panNo", kycOpt.map(Kyc::getPanNumber).orElse("N/A")); // Assuming panNo is in Kyc
 
-        // Bank details from KycRepository
         userProfile.put("bankName", kycOpt.map(Kyc::getBankName).orElse("N/A"));
         userProfile.put("bankAccNo", kycOpt.map(Kyc::getAccountNumber).orElse("N/A"));
         userProfile.put("bankIfsc", kycOpt.map(Kyc::getIfscCode).orElse("N/A"));
 
 
-        // Active FD status from DepositsRepository
         boolean hasActiveFd = depositsRepository.existsByUserEmailAndStatus(user.getEmail(), "ACTIVE");
         userProfile.put("activeFd", hasActiveFd ? "Yes" : "No");
 
