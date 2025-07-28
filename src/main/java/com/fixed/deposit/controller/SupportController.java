@@ -30,7 +30,6 @@ public class SupportController {
         List<Support> openTickets = supportService.getOpenTickets();
         return ResponseEntity.ok(openTickets);
     }
-    // Add this endpoint to your SupportController
     @PutMapping("/{id}/resolve")
     public ResponseEntity<?> resolveTicket(@PathVariable Long id) {
         try {
@@ -39,5 +38,15 @@ public class SupportController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+    @GetMapping("/by-email")
+    public ResponseEntity<List<Support>> getTicketsByEmail(@RequestParam String email) {
+        List<Support> userTickets = supportService.getTicketsByEmail(email);
+        return ResponseEntity.ok(userTickets);
+    }
+    @GetMapping("/all")
+    public ResponseEntity<List<Support>> getAllTickets() {
+        List<Support> allTickets = supportService.getAllTickets();
+        return ResponseEntity.ok(allTickets);
     }
 }

@@ -19,11 +19,16 @@ public class SupportService {
     public List<Support> getOpenTickets() {
         return supportRepository.findByStatus("OPEN");
     }
-    // Add this method to your SupportService
     public Support resolveTicket(Long ticketId) {
         Support ticket = supportRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found with id: " + ticketId));
         ticket.setStatus("RESOLVED");
         return supportRepository.save(ticket);
+    }
+    public List<Support> getTicketsByEmail(String email) {
+        return supportRepository.findByCustomerEmail(email);
+    }
+    public List<Support> getAllTickets() {
+        return supportRepository.findAll();
     }
 }

@@ -5,6 +5,7 @@ import com.fixed.deposit.model.User;
 import com.fixed.deposit.repository.DepositsRepository;
 import com.fixed.deposit.repository.KycRepository;
 import com.fixed.deposit.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -56,7 +57,6 @@ public class UserService {
     public Optional<User> getUserByEmail(String email) {
         return userRepository.findByEmail(email);
     }
-
     public String updateUserPhone(User updatedUser) {
         Optional<User> userOpt = userRepository.findByEmail(updatedUser.getEmail());
 
@@ -92,7 +92,6 @@ public class UserService {
         User user = userOpt.get();
         return user.getMpin().equals(mpin) && !"DELETED".equals(user.getStatus());
     }
-
     public Optional<Map<String, Object>> getUserProfileByEmail(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
@@ -122,5 +121,53 @@ public class UserService {
 
         return Optional.of(userProfile);
     }
+    @Transactional // <-- Good practice to make this atomic
+    public boolean updateUserField(String email, String field, Object value) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            return false; // User not found
+        }
+        User user = userOpt.get();
 
+        // Use a switch to handle different fields
+        switch (field) {
+            case "phone":
+                user.setPhone((String) value);
+                userRepository.save(user);
+                return true;
+
+            // These fields are part of the Kyc entity
+            case "address":
+            case "bankName":
+            case "bankAccNo":
+            case "bankIfsc":
+                Optional<Kyc> kycOpt = kycRepository.findByUser_Email(email);
+                if (kycOpt.isEmpty()) {
+                    // You might want to create a new Kyc entity if one doesn't exist
+                    // For now, we'll treat it as a failure.
+                    return false;
+                }
+                Kyc kyc = kycOpt.get();
+                switch (field) {
+                    case "address":
+                        kyc.setCurrentAddress((String) value);
+                        break;
+                    case "bankName":
+                        kyc.setBankName((String) value);
+                        break;
+                    case "bankAccNo":
+                        kyc.setAccountNumber((String) value);
+                        break;
+                    case "bankIfsc":
+                        kyc.setIfscCode((String) value);
+                        break;
+                }
+                kycRepository.save(kyc);
+                return true;
+
+            default:
+                // Field is not editable or does not exist
+                throw new IllegalArgumentException("Field '" + field + "' cannot be updated.");
+        }
+    }
 }

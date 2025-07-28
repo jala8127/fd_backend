@@ -5,8 +5,10 @@ import com.fixed.deposit.model.User;
 import com.fixed.deposit.repository.PaymentsRepository;
 import com.fixed.deposit.service.EmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.util.List;
@@ -33,13 +35,6 @@ public class EmployeeController {
     public ResponseEntity<Employee> updateEmployee(@PathVariable Long id, @RequestBody Employee employee) {
         return ResponseEntity.ok(employeeService.updateEmployee(id, employee));
     }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteEmployee(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
-        return ResponseEntity.ok().build();
-    }
-
 
     @GetMapping("/admin/total-deposits")
     public ResponseEntity<Map<String, Object>> getTotalDeposits() {
@@ -95,6 +90,20 @@ public class EmployeeController {
     public ResponseEntity<List<PaymentsRepository.ChartDataProjection>> getChartData() {
         List<PaymentsRepository.ChartDataProjection> chartData = employeeService.getMonthlyChartData();
         return ResponseEntity.ok(chartData);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteEmployee(@PathVariable Long id, Principal principal) {
+        String loggedInEmployeeEmail = principal.getName();
+
+        Employee loggedInEmployee = employeeService.getEmployeeByEmail(loggedInEmployeeEmail);
+
+        if (loggedInEmployee != null && loggedInEmployee.getEmp_Id().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot delete your own account.");
+        }
+
+        employeeService.deleteEmployee(id);
+        return ResponseEntity.ok().build();
     }
 
 }

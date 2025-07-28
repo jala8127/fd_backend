@@ -8,4 +8,6 @@ import java.util.List;
 @Repository
 public interface SupportRepository extends JpaRepository<Support, Long> {
     List<Support> findByStatus(String status);
+
+    List<Support> findByCustomerEmail(String customerEmail);
 }

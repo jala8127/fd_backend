@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -77,8 +78,33 @@ public class UserController {
         String email = principal.getName();
 
         return userService.getUserProfileByEmail(email)
-                .map(ResponseEntity::ok) // If profile exists, return it with 200 OK
-                .orElseGet(() -> ResponseEntity.notFound().build()); // If not found, return 404
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/update-field")
+    public ResponseEntity<?> updateUserField(@RequestBody Map<String, Object> payload, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated.");
+        }
+
+        String email = principal.getName();
+        String field = (String) payload.get("field");
+        Object value = payload.get("value");
+
+        if (field == null || value == null) {
+            return ResponseEntity.badRequest().body("Field and value must be provided.");
+        }
+
+        try {
+            boolean success = userService.updateUserField(email, field, value);
+            if (success) {
+                return ResponseEntity.ok(Map.of("message", "Field '" + field + "' updated successfully."));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User or related data not found.");
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

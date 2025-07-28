@@ -24,4 +24,7 @@ public class Employee {
 
     @Column(nullable = true)
     private String activeToken;
+
+
+
 }
